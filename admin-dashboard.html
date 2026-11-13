@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends Management Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            color: #1e293b;
+        }
+
+        header {
+            background: #173b70;
+            color: white;
+            padding: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #0001;
+        }
+
+        button {
+            padding: 11px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #1769e0;
+            color: white;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .logout {
+            background: #c62828;
+        }
+
+        #message, #friendsList {
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 500px) {
+            main {
+                margin: 12px auto;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h2>Friends Management</h2>
+        <button class="logout" id="logoutButton">Log Out</button>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>Administrator Dashboard</h2>
+            <p>Welcome! You are viewing the administration area.</p>
+            <p id="message">Checking your login session...</p>
+        </section>
+
+        <section class="card">
+            <h2>Manage Friends</h2>
+            <p>
+    <a href="/add-friend.html">Create a New Friend Profile</a>
+</p>
+            <p>Check the friends saved in your local database file.</p>
+            <button id="loadButton">View Friends</button>
+            <div id="friendsList"></div>
+        </section>
+
+        <section class="card">
+            <h2>Next Feature</h2>
+            <p>
+                We will add a form for creating friend profiles,
+                setting individual access codes, and uploading photos.
+            </p>
+        </section>
+    </main>
+
+    <script>
+        const message = document.getElementById("message");
+        const friendsList = document.getElementById("friendsList");
+
+        async function checkLogin() {
+            try {
+                const response = await fetch("/api/admin/status", {
+                    credentials: "same-origin"
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || result.isAdmin !== true) {
+                    window.location.replace("/admin-login.html");
+                    return false;
+                }
+
+                message.textContent = "Administrator login verified.";
+                return true;
+            } catch (error) {
+                message.textContent =
+                    "Cannot connect to the server. Make sure it is running.";
+                return false;
+            }
+        }
+
+        document.getElementById("loadButton").addEventListener(
+            "click", async function() {
+                friendsList.textContent = "Loading friends...";
+
+                try {
+                    const response = await fetch("/api/friends", {
+                        credentials: "same-origin"
+                    });
+
+                    const data = await response.json();
+
+                    if (response.status === 401) {
+                        window.location.replace("/admin-login.html");
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        friendsList.textContent =
+                            data.error || "Could not load friends.";
+                        return;
+                    }
+
+                    friendsList.replaceChildren();
+                    if (!Array.isArray(data) || data.length === 0) {
+                        friendsList.textContent = "No friends have been added yet.";
+                        return;
+                    }
+
+                    data.forEach(function(friend) {
+                        const item = document.createElement("p");
+                        item.textContent =
+                            friend.name || "Unnamed friend";
+                        friendsList.appendChild(item);
+                    });
+                } catch (error) {
+                    friendsList.textContent =
+                        "Could not connect to the server.";
+                }
+            }
+        );
+
+        document.getElementById("logoutButton").addEventListener(
+            "click", async function() {
+                try {
+                    const response = await fetch("/api/admin/logout", {
+                        method: "POST",
+                        credentials: "same-origin"
+                    });
+
+                    if (!response.ok) {
+                        message.textContent = "Logout failed. Try again.";
+                        return;
+                    }
+
+                    window.location.replace("/admin-login.html");
+                } catch (error) {
+                    message.textContent = "Could not connect to the server.";
+                }
+            }
+        );
+
+        checkLogin();
+    </script>
+</body>
+</html>
